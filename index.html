@@ -1,0 +1,71 @@
+<html>
+  <head>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene vr-mode-ui="enabled: true" renderer="antialias: true">
+      <a-entity position="0 1.6 0">
+        <!-- Camera Rig -->
+        <a-camera wasd-controls-enabled="false">
+          <!-- Right-hand controller with gun -->
+          <a-entity id="gun" laser-controls="hand: right" 
+                    gun-shooter 
+                    geometry="primitive: box; height: 0.1; width: 0.3; depth: 0.2"
+                    material="color: gray">
+          </a-entity>
+        </a-camera>
+      </a-entity>
+
+      <!-- Ground -->
+      <a-plane rotation="-90 0 0" width="100" height="100" color="#7BC8A4"></a-plane>
+      
+      <!-- Sky -->
+      <a-sky color="#ECECEC"></a-sky>
+    </a-scene>
+
+    <script>
+      AFRAME.registerComponent('gun-shooter', {
+        init: function () {
+          this.el.addEventListener('triggerdown', () => {
+            const bullet = document.createElement('a-sphere');
+            bullet.setAttribute('radius', 0.05);
+            bullet.setAttribute('color', 'red');
+
+            // Get gun position and rotation
+            const gunObj = this.el.object3D;
+            const position = new THREE.Vector3();
+            const direction = new THREE.Vector3();
+            gunObj.getWorldPosition(position);
+            gunObj.getWorldDirection(direction);
+
+            bullet.setAttribute('position', position);
+            this.el.sceneEl.appendChild(bullet);
+
+            // Move bullet
+            const velocity = direction.multiplyScalar(0.2); // speed
+            bullet.setAttribute('velocity', {
+              x: velocity.x,
+              y: velocity.y,
+              z: velocity.z
+            });
+
+            // Remove after 2 seconds
+            setTimeout(() => bullet.remove(), 2000);
+          });
+        }
+      });
+
+      // Simple physics for bullets
+      AFRAME.registerComponent('velocity', {
+        schema: {type: 'vec3'},
+        tick: function (time, timeDelta) {
+          const pos = this.el.object3D.position;
+          const vel = this.data;
+          pos.x += vel.x * timeDelta / 16;
+          pos.y += vel.y * timeDelta / 16;
+          pos.z += vel.z * timeDelta / 16;
+        }
+      });
+    </script>
+  </body>
+</html>
