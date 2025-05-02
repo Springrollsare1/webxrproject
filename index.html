@@ -1,29 +1,45 @@
+<!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <title>VR Shooter</title>
   </head>
   <body>
     <a-scene vr-mode-ui="enabled: true" renderer="antialias: true">
+      <!-- Camera Rig with gun and HUD -->
       <a-entity position="0 1.6 0">
-        <!-- Camera Rig -->
         <a-camera wasd-controls-enabled="false">
-          <!-- Right-hand controller with gun -->
-          <a-entity id="gun" laser-controls="hand: right" 
-                    gun-shooter 
-                    geometry="primitive: box; height: 0.1; width: 0.3; depth: 0.2"
-                    material="color: gray">
+          <!-- Gun -->
+          <a-entity id="gun" laser-controls="hand: right" gun-shooter
+            geometry="primitive: box; height: 0.1; width: 0.3; depth: 0.2"
+            material="color: gray">
           </a-entity>
+          <!-- Score Text -->
+          <a-entity id="scoreText" position="0 -0.3 -1"
+            text="value: Score: 0; color: black; width: 2;"></a-entity>
         </a-camera>
       </a-entity>
 
-      <!-- Ground -->
+      <!-- Targets -->
+      <a-box position="0 1.5 -5" color="orange" shootable-target></a-box>
+      <a-box position="-1 2 -6" color="orange" shootable-target></a-box>
+      <a-box position="1 2 -7" color="orange" shootable-target></a-box>
+
+      <!-- Ground and Sky -->
       <a-plane rotation="-90 0 0" width="100" height="100" color="#7BC8A4"></a-plane>
-      
-      <!-- Sky -->
       <a-sky color="#ECECEC"></a-sky>
+
+      <!-- Light -->
+      <a-light type="directional" position="1 3 1" intensity="1.2"></a-light>
     </a-scene>
 
+    <!-- Sound (optional local hosting of 'gunshot.mp3' needed) -->
+    <audio id="gunSound" src="gunshot.mp3" preload="auto"></audio>
+
     <script>
+      let score = 0;
+
       AFRAME.registerComponent('gun-shooter', {
         init: function () {
           this.el.addEventListener('triggerdown', () => {
@@ -31,7 +47,6 @@
             bullet.setAttribute('radius', 0.05);
             bullet.setAttribute('color', 'red');
 
-            // Get gun position and rotation
             const gunObj = this.el.object3D;
             const position = new THREE.Vector3();
             const direction = new THREE.Vector3();
@@ -41,29 +56,47 @@
             bullet.setAttribute('position', position);
             this.el.sceneEl.appendChild(bullet);
 
-            // Move bullet
-            const velocity = direction.multiplyScalar(0.2); // speed
+            const velocity = direction.multiplyScalar(5);
             bullet.setAttribute('velocity', {
               x: velocity.x,
               y: velocity.y,
               z: velocity.z
             });
 
-            // Remove after 2 seconds
+            // Play sound if available
+            const sound = document.getElementById('gunSound');
+            if (sound) sound.play();
+
             setTimeout(() => bullet.remove(), 2000);
           });
         }
       });
 
-      // Simple physics for bullets
       AFRAME.registerComponent('velocity', {
-        schema: {type: 'vec3'},
+        schema: { type: 'vec3' },
         tick: function (time, timeDelta) {
           const pos = this.el.object3D.position;
           const vel = this.data;
-          pos.x += vel.x * timeDelta / 16;
-          pos.y += vel.y * timeDelta / 16;
-          pos.z += vel.z * timeDelta / 16;
+          pos.x += vel.x * timeDelta / 1000;
+          pos.y += vel.y * timeDelta / 1000;
+          pos.z += vel.z * timeDelta / 1000;
+
+          const targets = document.querySelectorAll('.target');
+          targets.forEach(target => {
+            const tPos = target.object3D.position;
+            if (this.el.object3D.position.distanceTo(tPos) < 0.5) {
+              target.remove();
+              this.el.remove();
+              score++;
+              document.querySelector('#scoreText').setAttribute('text', 'value', `Score: ${score}`);
+            }
+          });
+        }
+      });
+
+      AFRAME.registerComponent('shootable-target', {
+        init: function () {
+          this.el.classList.add('target');
         }
       });
     </script>
